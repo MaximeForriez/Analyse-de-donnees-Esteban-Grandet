@@ -1,0 +1,7 @@
+metadata
+# METADATA:
+# ME099: [MAE] LATMOS - PARIS 
+# Source: www.infoclimat.fr
+# Licence Ouverte/Open License: http://wiki.data.gouv.fr/images/9/9d/Licence_Ouverte.pdf
+station_id;dh_utc;temperature;pression;humidite;point_de_rosee;vent_moyen;vent_rafales;vent_direction;pluie_3h;pluie_1h
+ME099;2025-10-01 00:00:00;12.3;1024.7;81;9.4;9.7;;344;;0
