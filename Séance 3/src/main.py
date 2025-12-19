@@ -1,90 +1,133 @@
-# main.py
 import os
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
-# 1. Lecture du fichier CSV avec 'with'
-csv_path = "data/island-index.csv"  # adapte ce chemin selon ton fichier
-with open(csv_path, 'r', encoding='utf-8') as f:
-    df = pd.read_csv(f)
+# =============================
+# Configuration des dossiers
+# =============================
+BASE_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(BASE_DIR, "data")
+IMG_DIR = os.path.join(BASE_DIR, "img")
 
+os.makedirs(IMG_DIR, exist_ok=True)
+
+# =============================
+# 1. Lecture du fichier CSV (élections)
+# =============================
+file_elections = os.path.join(DATA_DIR, "resultats-elections-presidentielles-2022-1er-tour.csv")
+
+with open(file_elections, "r", encoding="utf-8") as f:
+    df = pd.read_csv(f, low_memory=False)
+
+# Conversion propre des colonnes numériques
+for col in df.columns:
+    df[col] = pd.to_numeric(df[col], errors="ignore")
+
+# =============================
 # 2. Sélection des colonnes quantitatives
-quant_cols = df.select_dtypes(include=[np.number]).columns
-print("Colonnes quantitatives :", quant_cols.tolist())
+# =============================
+quantitative_cols = df.select_dtypes(include=[np.number])
 
+# =============================
 # 3. Calcul des paramètres statistiques
-stats = {}
-for col in quant_cols:
-    mean_val = df[col].mean().round(2)
-    median_val = df[col].median().round(2)
-    mode_val = df[col].mode().iloc[0] if not df[col].mode().empty else np.nan
-    std_val = df[col].std().round(2)
-    mean_abs_dev = np.mean(np.abs(df[col] - mean_val)).round(2)
-    col_range = (df[col].max() - df[col].min()).round(2)
-    stats[col] = {
-        "Moyenne": mean_val,
-        "Médiane": median_val,
-        "Mode": mode_val,
-        "Ecart-type": std_val,
-        "Ecart absolu à la moyenne": mean_abs_dev,
-        "Etendue": col_range
-    }
+# =============================
+means = quantitative_cols.mean().round(2)
+medians = quantitative_cols.median().round(2)
+modes = quantitative_cols.mode().iloc[0].round(2)
+stds = quantitative_cols.std().round(2)
 
-# 4. Affichage des statistiques
-for col, param in stats.items():
-    print(f"\nColonne : {col}")
-    for k, v in param.items():
-        print(f"{k} : {v}")
+abs_dev_mean = quantitative_cols.sub(means).abs().mean().round(2)
 
+ranges = (quantitative_cols.max() - quantitative_cols.min()).round(2)
+
+# =============================
+# 4. Affichage des résultats
+# =============================
+print("Moyennes :", means.tolist())
+print("Médianes :", medians.tolist())
+print("Modes :", modes.tolist())
+print("Écarts-types :", stds.tolist())
+print("Écart absolu moyen :", abs_dev_mean.tolist())
+print("Étendues :", ranges.tolist())
+
+# =============================
 # 5. Distance interquartile et interdécile
-iqd_idd = {}
-for col in quant_cols:
-    q1 = df[col].quantile(0.25)
-    q3 = df[col].quantile(0.75)
-    iqd = (q3 - q1).round(2)
-    
-    d1 = df[col].quantile(0.1)
-    d9 = df[col].quantile(0.9)
-    idd = (d9 - d1).round(2)
-    
-    iqd_idd[col] = {"IQR": iqd, "Interdécile": idd}
+# =============================
+q1 = quantitative_cols.quantile(0.25)
+q3 = quantitative_cols.quantile(0.75)
+interquartile = (q3 - q1).round(2)
 
-print("\nDistance interquartile et interdécile :")
-for col, val in iqd_idd.items():
-    print(f"{col} -> IQR: {val['IQR']}, Interdécile: {val['Interdécile']}")
+d1 = quantitative_cols.quantile(0.1)
+d9 = quantitative_cols.quantile(0.9)
+interdecile = (d9 - d1).round(2)
 
-# 6. Boîtes à moustache (boxplots)
-output_dir = "img"
-os.makedirs(output_dir, exist_ok=True)
+print("Distance interquartile :", interquartile.tolist())
+print("Distance interdécile :", interdecile.tolist())
 
-for col in quant_cols:
-    plt.figure(figsize=(8,6))
-    plt.boxplot(df[col].dropna())
-    plt.title(f"Boîte à moustache de {col}")
+# =============================
+# 6. Boîtes à moustaches
+# =============================
+for col in quantitative_cols.columns:
+    plt.figure()
+    plt.boxplot(quantitative_cols[col].dropna())
+    plt.title(f"Boîte à moustaches – {col}")
     plt.ylabel(col)
-    # Sauvegarde du graphique
-    safe_col = col.replace("/", "_").replace("\\", "_")
-    plt.savefig(f"{output_dir}/{safe_col}.png")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(IMG_DIR, f"boxplot_{col}.png"))
     plt.close()
 
-print("\nBoîtes à moustache sauvegardées dans le dossier 'img'.")
+# =============================
+# 7. Lecture du fichier island-index.csv
+# =============================
+file_islands = os.path.join(DATA_DIR, "island-index.csv")
 
-#9 et 10
-csv_path = "data/island-index.csv"
-with open(csv_path, 'r', encoding='utf-8') as f:
-    df = pd.read_csv(f)
+with open(file_islands, "r", encoding="utf-8") as f:
+    df_islands = pd.read_csv(f)
 
-df.columns = df.columns.str.strip()
+# Nettoyage des noms de colonnes
+df_islands.columns = df_islands.columns.str.strip()
 
-surface = df['Surface (km²)']
+# =============================
+# 8. Catégorisation des surfaces
+# =============================
+# Adapter ici si le nom exact diffère
+surface = df_islands["Surface (km²)"]
 
-# Définition des intervalles et catégories
 bins = [0, 10, 25, 50, 100, 2500, 5000, 10000, np.inf]
-labels = ['0-10', '10-25', '25-50', '50-100', '100-2500', '2500-5000', '5000-10000', '>=10000']
+labels = [
+    "]0,10]",
+    "]10,25]",
+    "]25,50]",
+    "]50,100]",
+    "]100,2500]",
+    "]2500,5000]",
+    "]5000,10000]",
+    "]10000,+∞["
+]
 
 categories = pd.cut(surface, bins=bins, labels=labels, right=True)
 counts = categories.value_counts().sort_index()
 
-print("Nombre d’îles par catégorie de surface :")
+print("Répartition des îles par surface :")
 print(counts)
+
+# =============================
+# 9. Bonus : export CSV et Excel
+# =============================
+results_df = pd.DataFrame({
+    "Moyenne": means,
+    "Médiane": medians,
+    "Mode": modes,
+    "Écart-type": stds,
+    "Écart absolu moyen": abs_dev_mean,
+    "Étendue": ranges,
+    "Interquartile": interquartile,
+    "Interdécile": interdecile
+})
+
+results_df.to_csv(os.path.join(BASE_DIR, "statistiques_elections.csv"))
+results_df.to_excel(os.path.join(BASE_DIR, "statistiques_elections.xlsx"))
+
+
